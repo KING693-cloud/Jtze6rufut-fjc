@@ -1,4 +1,4 @@
-├── admin.html       # Enterprise Hub / Main Dashboard
+├── index.html       # Enterprise Hub / Main Dashboard
 ├── incoming.html    # Real-time Trade Approval Feed
 ├── payouts.html     # Withdrawal Management Terminal
 ├── rates.html       # Global Market Rate Controller
