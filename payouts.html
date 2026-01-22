@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Terminal | Payout Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        
+        :root {
+            --accent-blue: #3b82f6;
+            --deep-navy: #020617;
+            --glass: rgba(15, 23, 42, 0.8);
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--deep-navy); 
+            color: #f8fafc;
+            overflow-x: hidden;
+            width: 100%;
+        }
+
+        .glass-card { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 2rem; }
+        
+        .shrink-text {
+            font-size: clamp(1.5rem, 7vw, 2.5rem);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+            line-height: 1.2;
+        }
+
+        .stat-glow { text-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+        .profit-glow { text-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+
+        .modal-blur { background: rgba(2, 6, 23, 0.98); backdrop-filter: blur(20px); display: none; position: fixed; inset: 0; z-index: 999; align-items: center; justify-content: center; padding: 20px; }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slide { animation: slideIn 0.5s ease forwards; }
+
+        ::-webkit-scrollbar { width: 0px; }
+    </style>
+</head>
+<body class="pb-32">
+
+    <nav class="p-6 border-b border-white/5 bg-slate-950/90 backdrop-blur-xl sticky top-0 z-50 flex justify-between items-center">
+        <div class="flex items-center gap-4">
+            <button onclick="window.history.back()" class="w-12 h-12 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 active:scale-90 transition">
+                <i class="fas fa-arrow-left text-gray-500"></i>
+            </button>
+            <div>
+                <h1 class="text-[11px] font-black uppercase tracking-[0.4em] text-blue-500">Payout Hub</h1>
+                <p class="text-[8px] font-bold text-gray-600 uppercase">Secure Terminal v5.5</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="window.location.href='history.html'" class="w-10 h-10 flex items-center justify-center bg-yellow-500/10 rounded-xl border border-yellow-500/20 active:scale-90 transition">
+                <i class="fas fa-history text-yellow-500"></i>
+            </button>
+            <div class="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-2xl border border-white/5">
+                <p id="payoutCount" class="text-xs font-black text-white">0 ACTIVE</p>
+                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+            </div>
+        </div>
+    </nav>
+
+    <section class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto mt-6">
+        <div class="glass-card p-8 border-blue-500/10 relative overflow-hidden">
+            <p class="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-2">Pending Liability</p>
+            <h3 id="totalQueueValue" class="shrink-text font-black italic stat-glow text-white">₦0</h3>
+        </div>
+        <div class="glass-card p-8 border-emerald-500/10 relative overflow-hidden">
+            <p class="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-2">Processed Today</p>
+            <h3 id="processedVolume" class="shrink-text font-black italic text-emerald-500 profit-glow">₦0</h3>
+        </div>
+    </section>
+
+    <main class="p-4 space-y-4 max-w-4xl mx-auto mt-2" id="payoutList">
+        <div class="py-32 text-center">
+            <div class="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-6"></div>
+            <p class="text-[10px] font-black text-gray-600 uppercase tracking-widest animate-pulse">Syncing Database...</p>
+        </div>
+    </main>
+
+    <div id="warningModal" class="modal-blur">
+        <div class="bg-[#0f172a] border border-blue-500/20 p-10 rounded-[3rem] w-full max-w-sm text-center shadow-2xl animate-slide">
+            <h2 class="text-xl font-black mb-10 uppercase italic">Authorize</h2>
+            <h1 id="confirmValue" class="text-3xl font-black text-white mb-10 tracking-tighter">₦0</h1>
+            <div class="space-y-3">
+                <button id="confirmPayBtn" class="w-full bg-blue-600 py-5 rounded-2xl font-black text-[11px] uppercase tracking-widest">Confirm & Release</button>
+                <button onclick="closeWarning()" class="w-full bg-white/5 py-4 rounded-2xl font-black text-[10px] uppercase text-gray-600">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, updateDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3vDwtittQkvW6Bxseutk-ThHFkrF_K0c",
+            authDomain: "boltrade-40812.firebaseapp.com",
+            projectId: "boltrade-40812"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        let activeId = null;
+
+        const rollNumber = (id, target) => {
+            const el = document.getElementById(id);
+            el.innerText = "₦" + target.toLocaleString(undefined, {minimumFractionDigits: 0});
+        };
+
+        // FIXED: Processed Today Logic - Filter by current date string Solomon
+        onSnapshot(query(collection(db, "withdrawals"), where("status", "==", "Approved")), (snap) => {
+            let todayTotal = 0;
+            const todayStr = new Date().toLocaleDateString(); // Gets "MM/DD/YYYY" or "DD/MM/YYYY"
+
+            snap.forEach(d => {
+                const data = d.data();
+                // We check if finalizedAt exists and matches today's date Solomon
+                if (data.finalizedAt) {
+                    const finalizedDate = data.finalizedAt.toDate().toLocaleDateString();
+                    if (finalizedDate === todayStr) {
+                        todayTotal += data.amount || 0;
+                    }
+                }
+            });
+            rollNumber('processedVolume', todayTotal);
+        });
+
+        // Queue Sync (Remains global for pending liability)
+        onSnapshot(query(collection(db, "withdrawals"), where("status", "==", "Pending")), (snap) => {
+            const list = document.getElementById('payoutList');
+            let debt = 0;
+            document.getElementById('payoutCount').innerText = `${snap.size} ACTIVE`;
+            
+            if(snap.empty) {
+                list.innerHTML = `<div class="py-20 text-center opacity-20 text-[10px] font-black uppercase tracking-widest">Queue Clear</div>`;
+                document.getElementById('totalQueueValue').innerText = "₦0";
+                return;
+            }
+
+            list.innerHTML = "";
+            snap.forEach(d => {
+                const p = d.data();
+                debt += p.amount || 0;
+                list.innerHTML += `
+                <div class="glass-card p-6 space-y-4 animate-slide">
+                    <div class="flex justify-between items-center">
+                        <div class="w-2/3"><h2 class="shrink-text font-black italic text-white">₦${(p.amount || 0).toLocaleString()}</h2></div>
+                        <button onclick="openWarning('${d.id}', ${p.amount})" class="bg-blue-600 px-6 py-3 rounded-xl font-black text-[10px]">PAY</button>
+                    </div>
+                    <div class="bg-black/30 p-5 rounded-2xl space-y-2 text-[10px] font-bold border border-white/5">
+                        <div class="flex justify-between text-gray-400 uppercase"><span>Bank</span><span class="text-white">${p.bank}</span></div>
+                        <div class="flex justify-between text-gray-400 uppercase"><span>A/C</span><span class="text-white tracking-widest">${p.accNo || p.account}</span></div>
+                        <div class="flex justify-between text-gray-400 uppercase"><span>Name</span><span class="text-yellow-500">${p.accName || p.name}</span></div>
+                    </div>
+                </div>`;
+            });
+            rollNumber('totalQueueValue', debt);
+        });
+
+        window.openWarning = (id, amt) => {
+            activeId = id;
+            document.getElementById('confirmValue').innerText = "₦" + amt.toLocaleString();
+            document.getElementById('warningModal').style.display = 'flex';
+        };
+
+        window.closeWarning = () => document.getElementById('warningModal').style.display = 'none';
+
+        document.getElementById('confirmPayBtn').onclick = async function() {
+            if(!activeId) return;
+            this.disabled = true;
+            try {
+                // We add finalizedAt: serverTimestamp() so that our "Today" filter knows when it happened Solomon
+                await updateDoc(doc(db, "withdrawals", activeId), { 
+                    status: "Approved",
+                    finalizedAt: serverTimestamp() 
+                });
+                closeWarning();
+            } catch(e) { alert(e.message); }
+            finally { this.disabled = false; }
+        };
+    </script>
+</body>
+</html>

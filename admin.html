@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Enterprise Hub | Admin Suite v5.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+        
+        :root {
+            --blue-glow: rgba(59, 130, 246, 0.15);
+            --amber-glow: rgba(245, 158, 11, 0.15);
+            --emerald-glow: rgba(16, 185, 129, 0.15);
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #020617; 
+            color: white; 
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+
+        .glass-panel { 
+            background: rgba(15, 23, 42, 0.8); 
+            backdrop-filter: blur(25px); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+        }
+        
+        .nav-card { 
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-card:active { transform: scale(0.97); background: rgba(255, 255, 255, 0.03); }
+
+        .stat-card { 
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .live-tag {
+            font-size: 8px;
+            font-weight: 900;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            letter-spacing: 1.5px;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .data-label { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 2px; }
+        .data-value { font-size: clamp(1.1rem, 4.5vw, 1.5rem); font-weight: 900; letter-spacing: -1px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .pulse-dot { width: 6px; height: 6px; background: #22c55e; border-radius: 50%; display: inline-block; box-shadow: 0 0 10px #22c55e; animation: blink 2s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.8); } }
+
+        .scroll-reveal { animation: reveal 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
+        @keyframes reveal { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        .icon-box { width: 55px; height: 55px; border-radius: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    </style>
+</head>
+<body class="p-6 pb-40 max-w-3xl mx-auto">
+
+    <header class="flex justify-between items-start mb-10 pt-4">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <span class="pulse-dot"></span>
+                <span class="live-tag uppercase">System Secure</span>
+            </div>
+            <h1 class="text-4xl font-black italic tracking-tighter uppercase leading-none">Admin<span class="text-blue-500">.</span>Center</h1>
+            <p class="text-[9px] font-bold text-gray-500 uppercase mt-2 tracking-[0.3em]">Operational Intelligence Terminal</p>
+        </div>
+        <button onclick="location.reload()" class="w-14 h-14 rounded-3xl glass-panel flex items-center justify-center active:rotate-180 transition-transform duration-1000">
+            <i class="fas fa-layer-group text-blue-500 text-sm"></i>
+        </button>
+    </header>
+
+    <div class="space-y-5 mb-12">
+        <div class="grid grid-cols-2 gap-4">
+            <section class="stat-card p-6 rounded-[2.5rem] scroll-reveal" style="animation-delay: 0.1s; box-shadow: 0 15px 30px var(--blue-glow);">
+                <p class="data-label mb-3">Payout Debt</p>
+                <h2 id="payoutDebt" class="data-value text-white">₦0.00</h2>
+                <i class="fas fa-vault absolute -right-4 -bottom-4 text-6xl opacity-[0.03]"></i>
+            </section>
+
+            <section class="stat-card p-6 rounded-[2.5rem] scroll-reveal" style="animation-delay: 0.2s; box-shadow: 0 15px 30px var(--amber-glow);">
+                <p class="data-label mb-3">Card Debt</p>
+                <h2 id="cardDebt" class="data-value text-amber-500">₦0.00</h2>
+                <i class="fas fa-credit-card absolute -right-4 -bottom-4 text-6xl opacity-[0.03]"></i>
+            </section>
+        </div>
+
+        <section class="stat-card p-7 rounded-[2.8rem] flex justify-between items-center scroll-reveal" style="animation-delay: 0.3s;">
+            <div class="flex items-center gap-5">
+                <div class="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/5">
+                    <i class="fas fa-microchip text-blue-500"></i>
+                </div>
+                <div>
+                    <p class="data-label mb-1">Total Workload</p>
+                    <h2 id="totalPending" class="text-3xl font-black italic">0</h2>
+                </div>
+            </div>
+            <div class="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl hidden xs:block">
+                <p class="text-[8px] font-black uppercase text-emerald-500 tracking-tighter">Optimized</p>
+            </div>
+        </section>
+    </div>
+
+    <nav class="space-y-4">
+        <h3 class="text-[10px] font-black text-gray-700 uppercase tracking-[0.6em] ml-4 mb-4">Management Core</h3>
+
+        <a href="incoming.html" class="nav-card p-6 rounded-[2.5rem] flex items-center justify-between scroll-reveal" style="animation-delay: 0.4s;">
+            <div class="flex items-center gap-6 min-w-0">
+                <div class="icon-box bg-amber-500 text-black shadow-lg shadow-amber-500/20">
+                    <i class="fas fa-bolt-lightning text-xl"></i>
+                </div>
+                <div class="truncate">
+                    <span class="block font-black uppercase text-sm italic tracking-widest">Trade Desk</span>
+                    <span class="text-[8px] font-bold text-gray-500 uppercase tracking-wider">Verification Terminal</span>
+                </div>
+            </div>
+            <div class="bg-amber-500/10 px-4 py-2 rounded-xl border border-amber-500/10">
+                <span id="tradeCount" class="text-xs font-black text-amber-500">0</span>
+            </div>
+        </a>
+
+        <a href="payouts.html" class="nav-card p-6 rounded-[2.5rem] flex items-center justify-between scroll-reveal" style="animation-delay: 0.5s;">
+            <div class="flex items-center gap-6 min-w-0">
+                <div class="icon-box bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+                    <i class="fas fa-landmark text-xl"></i>
+                </div>
+                <div class="truncate">
+                    <span class="block font-black uppercase text-sm italic tracking-widest">Payout Queue</span>
+                    <span class="text-[8px] font-bold text-gray-500 uppercase tracking-wider">Settlement Ledger</span>
+                </div>
+            </div>
+            <div class="bg-blue-600/10 px-4 py-2 rounded-xl border border-blue-600/10">
+                <span id="payoutCount" class="text-xs font-black text-blue-500">0</span>
+            </div>
+        </a>
+
+        <a href="rates.html" class="nav-card p-6 rounded-[2.5rem] flex items-center gap-6 scroll-reveal" style="animation-delay: 0.6s;">
+            <div class="icon-box bg-emerald-600 text-white">
+                <i class="fas fa-chart-line text-xl"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <span class="block font-black uppercase text-sm italic tracking-widest">Market Control</span>
+                <span class="text-[8px] font-bold text-gray-500 uppercase tracking-wider">Rate Logic Override</span>
+            </div>
+            <i class="fas fa-chevron-right text-gray-800 text-[10px]"></i>
+        </a>
+
+        <a href="save.html" class="nav-card p-6 rounded-[2.5rem] flex items-center gap-6 scroll-reveal" style="animation-delay: 0.7s;">
+            <div class="icon-box bg-purple-600 text-white">
+                <i class="fas fa-id-badge text-xl"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <span class="block font-black uppercase text-sm italic tracking-widest">User Registry</span>
+                <span id="userTotal" class="text-[8px] font-bold text-gray-500 uppercase tracking-wider">0 Accounts Verified</span>
+            </div>
+            <i class="fas fa-chevron-right text-gray-800 text-[10px]"></i>
+        </a>
+
+        <a href="bin.html" class="nav-card p-6 rounded-[2.5rem] flex items-center gap-6 scroll-reveal" style="animation-delay: 0.8s;">
+            <div class="icon-box bg-slate-700 text-white">
+                <i class="fas fa-box-archive text-xl"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <span class="block font-black uppercase text-sm italic tracking-widest">Vault Archive</span>
+                <span class="text-[8px] font-bold text-gray-500 uppercase tracking-wider">Indexed Historical Data</span>
+            </div>
+            <i class="fas fa-chevron-right text-gray-800 text-[10px]"></i>
+        </a>
+    </nav>
+
+    <footer class="mt-20 text-center pb-10">
+        <div class="w-12 h-1 bg-white/5 mx-auto mb-6 rounded-full"></div>
+        <p class="text-[8px] font-black text-gray-700 uppercase tracking-[0.6em]">Enterprise Architecture v5.0.2</p>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3vDwtittQkvW6Bxseutk-ThHFkrF_K0c",
+            authDomain: "boltrade-40812.firebaseapp.com",
+            projectId: "boltrade-40812",
+            storageBucket: "boltrade-40812.firebasestorage.app",
+            messagingSenderId: "682083427899",
+            appId: "1:682083427899:web:07a8f74c04908dc8f8de1e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        onSnapshot(query(collection(db, "withdrawals"), where("status", "==", "Pending")), (snap) => {
+            let cashDebt = 0;
+            snap.forEach(doc => cashDebt += parseFloat(doc.data().amount || 0));
+            document.getElementById('payoutDebt').innerText = "₦" + cashDebt.toLocaleString();
+            document.getElementById('payoutCount').innerText = snap.size;
+            updateTotalPending();
+        });
+
+        onSnapshot(query(collection(db, "trades"), where("status", "==", "Approved")), (snap) => {
+            let cardDebt = 0;
+            snap.forEach(doc => cardDebt += parseFloat(doc.data().payoutAmount || 0));
+            document.getElementById('cardDebt').innerText = "₦" + cardDebt.toLocaleString();
+        });
+
+        onSnapshot(query(collection(db, "trades"), where("status", "==", "Pending")), (snap) => {
+            document.getElementById('tradeCount').innerText = snap.size;
+            updateTotalPending();
+        });
+
+        onSnapshot(collection(db, "users"), (snap) => {
+            document.getElementById('userTotal').innerText = snap.size + " Accounts Verified";
+        });
+
+        function updateTotalPending() {
+            const t = parseInt(document.getElementById('tradeCount').innerText) || 0;
+            const p = parseInt(document.getElementById('payoutCount').innerText) || 0;
+            document.getElementById('totalPending').innerText = (t + p);
+        }
+    </script>
+</body>
+</html>

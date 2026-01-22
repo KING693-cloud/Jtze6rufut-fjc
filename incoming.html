@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Boltrade Admin | Elite Transaction Feed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+        
+        :root {
+            --gold: #D4AF37;
+            --dark: #020617;
+            --glass: rgba(15, 23, 42, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--dark); 
+            color: white; 
+            margin: 0;
+            padding-bottom: 120px;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* PREMIUM LOADING OVERLAY */
+        #pageLoader {
+            position: fixed;
+            inset: 0;
+            background: var(--dark);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loader-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(212, 175, 55, 0.05);
+            border-top: 4px solid var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* HEADER ARCHITECTURE */
+        .admin-nav {
+            position: sticky;
+            top: 0;
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            border-bottom: 1px solid var(--card-border);
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gold-gradient-text {
+            background: linear-gradient(135deg, #D4AF37 0%, #F9E29C 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* FEED CARDS */
+        .transaction-card {
+            background: var(--glass);
+            border: 1px solid var(--card-border);
+            border-radius: 2.8rem;
+            padding: 28px;
+            margin-bottom: 24px;
+            animation: cardEntry 0.6s cubic-bezier(0.2, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes cardEntry {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .asset-sticker {
+            width: 64px;
+            height: 64px;
+            border-radius: 1.5rem;
+            background: #0f172a;
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+        .data-row {
+            background: rgba(255,255,255,0.03);
+            border-radius: 1.2rem;
+            padding: 14px 20px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* ACTION BUTTONS */
+        .btn-action {
+            padding: 20px;
+            border-radius: 1.5rem;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-approve { background: var(--success); color: white; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.2); }
+        .btn-reject { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .btn-view { background: #1e293b; color: white; margin-bottom: 12px; width: 100%; border: 1px solid var(--card-border); }
+
+        .btn-action:active { transform: scale(0.95); opacity: 0.8; }
+
+        /* DYNAMIC MODAL ENGINE */
+        #universalModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.96);
+            backdrop-filter: blur(15px);
+            z-index: 5000;
+            padding: 24px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-card {
+            background: #0f172a;
+            border: 1px solid var(--card-border);
+            border-radius: 3.5rem;
+            padding: 40px 30px;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            transform: translateY(40px);
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #universalModal.active .modal-card { transform: translateY(0); }
+
+        .code-box {
+            background: #020617;
+            padding: 24px;
+            border-radius: 1.5rem;
+            border: 1px dashed var(--gold);
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 24px;
+            color: var(--gold);
+            font-weight: 900;
+            margin: 20px 0;
+        }
+
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="pageLoader">
+        <div class="loader-spinner"></div>
+        <p class="text-[10px] font-black uppercase tracking-[0.5em] text-gray-600 mt-8 animate-pulse">Establishing Secure Link</p>
+    </div>
+
+    <div id="universalModal">
+        <div class="modal-card" id="modalContainer">
+            </div>
+    </div>
+
+    <nav class="admin-nav">
+        <button onclick="window.history.back()" class="w-14 h-14 bg-white/5 rounded-[1.5rem] flex items-center justify-center border border-white/5">
+            <i class="fas fa-arrow-left text-gray-500"></i>
+        </button>
+        <div class="text-center">
+            <h1 class="text-xs font-black uppercase italic gold-gradient-text tracking-[0.1em]">Blockchain Inflow</h1>
+            <p id="liveStatus" class="text-[7px] text-gray-600 font-bold uppercase tracking-[0.4em] mt-1">Standby Mode</p>
+        </div>
+        <div class="w-14 h-14 bg-white/5 rounded-[1.5rem] flex items-center justify-center border border-white/5">
+            <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+        </div>
+    </nav>
+
+    <main class="p-6 max-w-xl mx-auto" id="feedList">
+        </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, onSnapshot, doc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3vDwtittQkvW6Bxseutk-ThHFkrF_K0c",
+            authDomain: "boltrade-40812.firebaseapp.com",
+            projectId: "boltrade-40812",
+            storageBucket: "boltrade-40812.firebasestorage.app",
+            messagingSenderId: "682083427899",
+            appId: "1:682083427899:web:07a8f74c04908dc8f8de1e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // UI Helpers
+        const showModal = (content) => {
+            const m = document.getElementById('universalModal');
+            document.getElementById('modalContainer').innerHTML = content;
+            m.style.display = 'flex';
+            setTimeout(() => m.classList.add('active'), 10);
+        };
+
+        window.closeModal = () => {
+            const m = document.getElementById('universalModal');
+            m.classList.remove('active');
+            setTimeout(() => m.style.display = 'none', 300);
+        };
+
+        // Initialize Loader
+        window.onload = () => {
+            setTimeout(() => {
+                document.getElementById('pageLoader').style.opacity = '0';
+                setTimeout(() => document.getElementById('pageLoader').style.display = 'none', 500);
+            }, 1200);
+        };
+
+        // DATA STREAM ENGINE
+        onSnapshot(collection(db, "trades"), (snap) => {
+            const list = document.getElementById('feedList');
+            const trades = [];
+            
+            snap.forEach(d => {
+                const data = d.data();
+                if(data.status === "Pending") trades.push({ id: d.id, ...data });
+            });
+
+            // Memory Sorting (Avoids Firebase Index Errors)
+            trades.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+            if(trades.length === 0) {
+                list.innerHTML = `<div class="py-40 text-center opacity-20"><i class="fas fa-shield-blank text-4xl mb-4"></i><p class="text-[10px] font-black uppercase tracking-[0.4em]">Zero Pending Nodes</p></div>`;
+                document.getElementById('liveStatus').innerText = "System Idle";
+                return;
+            }
+
+            document.getElementById('liveStatus').innerText = `${trades.length} Active Nodes Detected`;
+
+            list.innerHTML = trades.map(t => `
+                <div class="transaction-card">
+                    <div class="flex justify-between items-start mb-8">
+                        <div class="flex items-center gap-4">
+                            <div class="asset-sticker">
+                                <img src="${t.assetName?.toLowerCase().includes('btc') ? 'btc.png' : 'apple.png'}" class="w-full h-full object-contain" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2489/2489756.png'">
+                            </div>
+                            <div>
+                                <p class="text-[8px] font-black text-gold uppercase tracking-widest mb-1">${t.assetName || 'Digital Asset'}</p>
+                                <h2 class="text-3xl font-black italic gold-gradient-text tracking-tighter">₦${(t.amountNaira || 0).toLocaleString()}</h2>
+                            </div>
+                        </div>
+                        <span class="text-[8px] font-bold text-gray-700 bg-white/5 px-3 py-1 rounded-full">ID: ${t.id.slice(0,8)}</span>
+                    </div>
+
+                    <div class="space-y-2 mb-8">
+                        <div class="data-row"><span class="text-[9px] font-black text-gray-500 uppercase">Volume</span><span class="text-xs font-black">$${(t.amountUsd || 0).toLocaleString()}</span></div>
+                        <div class="data-row"><span class="text-[9px] font-black text-gray-500 uppercase">User Ref</span><span class="text-[10px] font-mono text-gray-400">${t.userId?.slice(0,15)}...</span></div>
+                    </div>
+
+                    <button onclick="inspectAsset('${t.code}', '${t.proof}')" class="btn-action btn-view">
+                        <i class="fas fa-expand-arrows-alt text-gold mr-2"></i> Inspect Credentials
+                    </button>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="promptDecision('${t.id}', '${t.userId}', ${t.amountNaira}, 'Approved')" class="btn-action btn-approve">Authorize</button>
+                        <button onclick="promptDecision('${t.id}', '${t.userId}', 0, 'Rejected')" class="btn-action btn-reject">Decline</button>
+                    </div>
+                </div>
+            `).join('');
+        });
+
+        // ACTION HANDLERS
+        window.inspectAsset = (code, proof) => {
+            let content = '';
+            if (proof && proof.startsWith('data:image')) {
+                content = `
+                    <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-6">Visual Proof Submission</h3>
+                    <img src="${proof}" class="w-full rounded-[2rem] border border-white/10 shadow-2xl mb-8">
+                    <button onclick="closeModal()" class="w-full py-5 bg-white/5 rounded-2xl text-[10px] font-black uppercase">Dismiss</button>
+                `;
+            } else {
+                content = `
+                    <i class="fas fa-fingerprint text-gold text-3xl mb-4"></i>
+                    <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest">Digital Code Node</h3>
+                    <div class="code-box">${code || 'NO_CODE_FOUND'}</div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="navigator.clipboard.writeText('${code}'); alert('Copied!')" class="py-4 bg-white/5 rounded-2xl text-[9px] font-black uppercase">Copy Code</button>
+                        <button onclick="closeModal()" class="py-4 bg-white/5 rounded-2xl text-[9px] font-black uppercase">Dismiss</button>
+                    </div>
+                `;
+            }
+            showModal(content);
+        };
+
+        window.promptDecision = (tid, uid, amt, action) => {
+            const isApprove = action === 'Approved';
+            const color = isApprove ? 'var(--success)' : 'var(--danger)';
+            const content = `
+                <div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style="background: ${color}15">
+                    <i class="fas ${isApprove ? 'fa-check' : 'fa-times'} text-2xl" style="color: ${color}"></i>
+                </div>
+                <h2 class="text-2xl font-black uppercase italic mb-2">${action} Node?</h2>
+                <p class="text-[10px] text-gray-500 font-bold uppercase mb-10 leading-relaxed">
+                    ${isApprove ? `Confirming will credit ₦${amt.toLocaleString()} to user balance.` : 'Declining will mark this trade as failed and notify the user.'}
+                </p>
+                <div class="space-y-3">
+                    <button onclick="finalizeProcess('${tid}', '${uid}', ${amt}, '${action}')" class="w-full py-5 rounded-2xl text-[11px] font-black uppercase text-white shadow-xl" style="background: ${color}">
+                        Confirm ${action}
+                    </button>
+                    <button onclick="closeModal()" class="w-full py-5 bg-white/5 rounded-2xl text-[11px] font-black uppercase text-gray-500">
+                        Cancel
+                    </button>
+                </div>
+            `;
+            showModal(content);
+        };
+
+        window.finalizeProcess = async (tid, uid, amt, status) => {
+            try {
+                // Safety: Check if user ID is valid
+                if (!uid || uid === "null") throw new Error("Reference User ID is missing (NULL)");
+
+                await updateDoc(doc(db, "trades", tid), { 
+                    status, 
+                    processedAt: serverTimestamp() 
+                });
+
+                if (status === 'Approved') {
+                    await updateDoc(doc(db, "users", uid), { 
+                        balance: increment(amt) 
+                    });
+                }
+                
+                closeModal();
+            } catch (err) {
+                alert("Critical System Error: " + err.message);
+                console.error(err);
+            }
+        };
+
+    </script>
+</body>
+</html>

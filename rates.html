@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Global Rate Terminal | Boltrade Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; color: white; -webkit-tap-highlight-color: transparent; }
+        .gold-text { color: #D4AF37; }
+        .rate-card { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 24px; transition: 0.3s; }
+        .rate-input { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #facc15; font-family: monospace; }
+        .sync-overlay { background: rgba(2, 6, 23, 0.9); backdrop-filter: blur(10px); display: flex; position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center; }
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="pb-32">
+
+    <div id="syncLoader" class="sync-overlay">
+        <div class="text-center">
+            <div class="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-yellow-500 mb-4"></div>
+            <p id="loaderText" class="text-[10px] font-black uppercase tracking-widest text-gray-400">Syncing Master Rates...</p>
+        </div>
+    </div>
+
+    <nav class="p-6 border-b border-white/5 bg-[#020617]/90 backdrop-blur-md sticky top-0 z-50 flex justify-between items-center">
+        <button onclick="window.history.back()" class="w-10 h-10 flex items-center justify-center bg-white/5 rounded-full border border-white/10">
+            <i class="fas fa-chevron-left text-xs text-gray-400"></i>
+        </button>
+        <div class="text-center">
+            <h1 class="text-[10px] font-black uppercase tracking-[0.3em] gold-text">Market Rate Master</h1>
+            <p class="text-[8px] font-bold text-gray-500 uppercase mt-1">Live Price Control</p>
+        </div>
+        <div class="w-10"></div>
+    </nav>
+
+    <header class="p-6 max-w-2xl mx-auto">
+        <div class="bg-yellow-500/5 border border-yellow-500/10 p-6 rounded-[2rem] mb-8">
+            <p class="text-[9px] font-black text-yellow-500 uppercase tracking-widest mb-4">Bulk Adjustment</p>
+            <div class="flex gap-3">
+                <button onclick="adjustAll(10)" class="flex-1 bg-white/5 py-4 rounded-2xl font-black text-[10px] uppercase border border-white/5 active:scale-95 transition">+₦10 All</button>
+                <button onclick="adjustAll(-10)" class="flex-1 bg-white/5 py-4 rounded-2xl font-black text-[10px] uppercase border border-white/5 active:scale-95 transition">-₦10 All</button>
+            </div>
+        </div>
+
+        <div id="rateGrid" class="space-y-4"></div>
+    </header>
+
+    <footer class="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#020617] via-[#020617] to-transparent z-40">
+        <button id="saveBtn" onclick="saveAll()" class="w-full max-w-xl mx-auto block bg-yellow-500 text-black py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-yellow-500/20 active:scale-95 transition">
+            Push Global Update
+        </button>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3vDwtittQkvW6Bxseutk-ThHFkrF_K0c",
+            authDomain: "boltrade-40812.firebaseapp.com",
+            projectId: "boltrade-40812",
+            storageBucket: "boltrade-40812.firebasestorage.app",
+            messagingSenderId: "682083427899",
+            appId: "1:682083427899:web:07a8f74c04908dc8f8de1e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Updated full asset list from your dashboard Solomon
+        const assetIds = [
+            "AMAZON", "SEPHORA", "APPLE", "RAZER", "STEAM", 
+            "XBOX", "EBAY", "ITUNES", "VISA", "FOOTLOCKER", 
+            "NORDSTROM", "VANILLA", "AMEX", "USDT", "BITCOIN"
+        ];
+        
+        let currentData = {};
+        let isLoaded = false;
+
+        const loader = document.getElementById('syncLoader');
+        const grid = document.getElementById('rateGrid');
+
+        onSnapshot(collection(db, "settings"), (snap) => {
+            if (!isLoaded) {
+                grid.innerHTML = "";
+                const dataMap = {};
+                snap.forEach(d => dataMap[d.id] = d.data().rate);
+
+                assetIds.forEach(id => {
+                    const rate = dataMap[id] || 0;
+                    currentData[id] = rate;
+
+                    grid.innerHTML += `
+                    <div class="rate-card p-5 flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/5">
+                                <img src="${id.toLowerCase()}.png" onerror="this.src='j.png'" class="w-6 h-6 object-contain opacity-50">
+                            </div>
+                            <span class="text-[11px] font-black uppercase italic tracking-tight">${id}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-[10px] font-black opacity-20 italic">₦</span>
+                            <input type="number" id="input-${id}" 
+                                   oninput="window.updateLocal('${id}', this.value)" 
+                                   value="${rate}" class="rate-input w-24 py-3 rounded-xl text-center font-black text-sm outline-none">
+                        </div>
+                    </div>`;
+                });
+                isLoaded = true;
+                loader.style.display = 'none';
+            }
+        });
+
+        window.updateLocal = (id, val) => {
+            currentData[id] = Number(val);
+        };
+
+        window.adjustAll = (amt) => {
+            assetIds.forEach(id => {
+                const el = document.getElementById(`input-${id}`);
+                if(el) {
+                    const newVal = Math.max(0, Number(el.value) + amt);
+                    el.value = newVal;
+                    currentData[id] = newVal;
+                }
+            });
+        };
+
+        window.saveAll = async () => {
+            document.getElementById('loaderText').innerText = "Pushing Global Changes...";
+            loader.style.display = 'flex';
+
+            try {
+                const batch = writeBatch(db);
+                assetIds.forEach(id => {
+                    const ref = doc(db, "settings", id);
+                    batch.set(ref, { rate: Number(currentData[id]) }, { merge: true });
+                });
+
+                await batch.commit();
+                
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                    alert("Network Update Successful.");
+                }, 800);
+            } catch (e) {
+                loader.style.display = 'none';
+                alert("Update Failed: " + e.message);
+            }
+        };
+    </script>
+</body>
+</html>

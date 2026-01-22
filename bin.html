@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Boltrade Admin | Forensic Archive</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+        
+        :root {
+            --gold: #D4AF37;
+            --blue: #3b82f6;
+            --dark: #020617;
+            --slate-900: #0f172a;
+            --glass: rgba(15, 23, 42, 0.6);
+            --danger: #ef4444;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--dark); 
+            color: white; 
+            margin: 0;
+            padding-bottom: 60px;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* HEADER & NAVIGATION */
+        .vault-nav {
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(25px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 24px;
+        }
+
+        /* METRIC CARDS */
+        .metric-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 2.2rem;
+            padding: 20px;
+            transition: all 0.3s ease;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .metric-amount {
+            font-size: clamp(0.9rem, 4vw, 1.25rem);
+            font-weight: 900;
+            font-style: italic;
+            letter-spacing: -0.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* TAB SYSTEM */
+        .tab-bar {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 5px 0;
+        }
+        .tab-bar::-webkit-scrollbar { display: none; }
+
+        .tab-node {
+            padding: 14px 24px;
+            border-radius: 1.2rem;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            transition: 0.4s;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .tab-node.active { background: var(--blue); color: white; border-color: var(--blue); box-shadow: 0 10px 20px rgba(59, 130, 246, 0.2); }
+        .tab-node.inactive { background: rgba(255, 255, 255, 0.02); color: rgba(255, 255, 255, 0.3); }
+
+        /* ARCHIVE LIST ENGINE */
+        .vault-item {
+            background: var(--glass);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 2.5rem;
+            padding: 18px 22px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .item-main-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .amount-display {
+            font-size: clamp(1rem, 5vw, 1.15rem);
+            font-weight: 900;
+            font-style: italic;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .status-pill {
+            font-size: 7px;
+            font-weight: 900;
+            padding: 4px 10px;
+            border-radius: 50px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            flex-shrink: 0;
+        }
+
+        .pill-approved { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .pill-rejected { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+        /* SEARCH */
+        .search-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1.5rem;
+            padding: 18px 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 25px 0;
+        }
+        .search-field { background: transparent; border: none; outline: none; color: white; font-size: 13px; width: 100%; font-weight: 600; }
+
+        #actionModal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(15px); z-index: 5000;
+            display: none; align-items: center; justify-content: center; padding: 25px;
+        }
+        .modal-terminal {
+            background: var(--slate-900); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 3.5rem; padding: 45px 35px; width: 100%; max-width: 400px; text-align: center;
+        }
+
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="actionModal">
+        <div class="modal-terminal" id="modalUI"></div>
+    </div>
+
+    <nav class="vault-nav">
+        <div class="max-w-3xl mx-auto flex justify-between items-center">
+            <button onclick="window.history.back()" class="w-12 h-12 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10">
+                <i class="fas fa-chevron-left text-gray-400"></i>
+            </button>
+            <div class="text-center">
+                <h1 class="text-[11px] font-black uppercase tracking-[0.5em] text-blue-500">Forensic Archive</h1>
+                <p id="systemStatus" class="text-[7px] font-bold text-gray-600 uppercase mt-1 tracking-widest">Historical Data Stream</p>
+            </div>
+            <div class="w-12 h-12 flex items-center justify-center bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                <i class="fas fa-database text-blue-500/40 text-sm"></i>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-3xl mx-auto px-6">
+        <div class="grid grid-cols-2 gap-4 mt-8">
+            <div class="metric-card">
+                <p class="text-[8px] font-black text-emerald-500/50 uppercase mb-1 tracking-widest">Settled</p>
+                <h3 id="statApproved" class="metric-amount text-emerald-400">₦0.00</h3>
+            </div>
+            <div class="metric-card">
+                <p class="text-[8px] font-black text-red-500/50 uppercase mb-1 tracking-widest">Declined</p>
+                <h3 id="statRejected" class="metric-amount text-red-400">₦0.00</h3>
+            </div>
+        </div>
+
+        <div class="search-box">
+            <i class="fas fa-fingerprint text-blue-500 text-lg"></i>
+            <input type="text" id="logSearch" placeholder="Filter nodes..." class="search-field" oninput="refreshUI()">
+        </div>
+
+        <div class="tab-bar">
+            <button onclick="setFilter('All')" id="tab-All" class="tab-node active">All Records</button>
+            <button onclick="setFilter('Approved')" id="tab-Approved" class="tab-node inactive">Settled</button>
+            <button onclick="setFilter('Rejected')" id="tab-Rejected" class="tab-node inactive">Declined</button>
+        </div>
+
+        <div id="archiveFeed" class="mt-8"></div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, increment, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3vDwtittQkvW6Bxseutk-ThHFkrF_K0c",
+            authDomain: "boltrade-40812.firebaseapp.com",
+            projectId: "boltrade-40812",
+            storageBucket: "boltrade-40812.firebasestorage.app",
+            messagingSenderId: "682083427899",
+            appId: "1:682083427899:web:07a8f74c04908dc8f8de1e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let activeFilter = 'All';
+        let masterLogs = [];
+        let userData = {};
+
+        onSnapshot(collection(db, "users"), (snap) => {
+            snap.forEach(d => { userData[d.id] = d.data(); });
+            refreshUI();
+        });
+
+        // SYNC ENGINE WITH NEWEST-FIRST SORTING
+        onSnapshot(collection(db, "trades"), (snap) => {
+            masterLogs = [];
+            let apprv = 0, rej = 0;
+            snap.forEach(d => {
+                const data = { id: d.id, ...d.data() };
+                if (data.status !== 'Pending') {
+                    masterLogs.push(data);
+                    if(data.status === 'Approved') apprv += (data.amountNaira || 0);
+                    else rej += (data.amountNaira || 0);
+                }
+            });
+
+            // LOGIC: Sort by timestamp seconds (Newest First)
+            masterLogs.sort((a, b) => {
+                const timeA = a.timestamp?.seconds || 0;
+                const timeB = b.timestamp?.seconds || 0;
+                return timeB - timeA;
+            });
+
+            document.getElementById('statApproved').innerText = "₦" + apprv.toLocaleString();
+            document.getElementById('statRejected').innerText = "₦" + rej.toLocaleString();
+            document.getElementById('systemStatus').innerText = `${masterLogs.length} Indexed Logs`;
+            refreshUI();
+        });
+
+        window.setFilter = (type) => {
+            activeFilter = type;
+            document.querySelectorAll('.tab-node').forEach(t => { t.classList.remove('active'); t.classList.add('inactive'); });
+            document.getElementById(`tab-${type}`).classList.add('active');
+            refreshUI();
+        };
+
+        window.refreshUI = () => {
+            const feed = document.getElementById('archiveFeed');
+            const query = document.getElementById('logSearch').value.toLowerCase();
+            let filtered = activeFilter === 'All' ? masterLogs : masterLogs.filter(l => l.status === activeFilter);
+            
+            if(query) filtered = filtered.filter(l => (l.assetName || '').toLowerCase().includes(query) || l.id.toLowerCase().includes(query));
+
+            feed.innerHTML = filtered.map(l => {
+                const user = userData[l.userId] || { balance: 0 };
+                const canUndo = (l.status === 'Rejected') || (l.status === 'Approved' && user.balance >= l.amountNaira);
+
+                return `
+                <div class="vault-item">
+                    <div class="item-main-content">
+                        <div class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/5 flex-shrink-0">
+                            <i class="fas fa-receipt text-gray-600 text-xs"></i>
+                        </div>
+                        <div class="min-width-0 flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="status-pill ${l.status === 'Approved' ? 'pill-approved' : 'pill-rejected'}">${l.status}</span>
+                                <span class="text-[6px] font-bold text-gray-700 font-mono truncate">ID: ${l.id.slice(0,10)}</span>
+                            </div>
+                            <h3 class="amount-display">₦${(l.amountNaira || 0).toLocaleString()}</h3>
+                            <p class="text-[7px] font-black text-gray-600 uppercase truncate">${l.assetName || 'Asset'}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 flex-shrink-0">
+                        <button onclick="triggerAction('Restore', '${l.id}', '${l.userId}', ${l.amountNaira}, '${l.status}', ${canUndo})" class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center active:scale-90 transition">
+                            <i class="fas fa-history text-[10px]"></i>
+                        </button>
+                        <button onclick="triggerAction('Burn', '${l.id}')" class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500/30 flex items-center justify-center active:scale-90 transition">
+                            <i class="fas fa-trash-alt text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        };
+
+        window.triggerAction = (type, id, uid, amt, status, canRestore) => {
+            const modal = document.getElementById('actionModal');
+            const ui = document.getElementById('modalUI');
+            if (type === 'Restore') {
+                ui.innerHTML = !canRestore ? `
+                    <h2 class="text-xl font-black uppercase mb-4">Locked</h2>
+                    <p class="text-[10px] text-gray-500 mb-8">User balance insufficient for reversal.</p>
+                    <button onclick="closeModal()" class="w-full py-4 bg-white/5 rounded-xl text-[10px] font-black">Close</button>
+                ` : `
+                    <h2 class="text-xl font-black uppercase mb-4">Restore Node?</h2>
+                    <button onclick="executeRestore('${id}', '${uid}', ${amt}, '${status}')" class="w-full py-4 bg-blue-600 rounded-xl text-[10px] font-black mb-3">Execute</button>
+                    <button onclick="closeModal()" class="w-full py-4 bg-white/5 rounded-xl text-[10px] font-black">Cancel</button>
+                `;
+            } else {
+                ui.innerHTML = `
+                    <h2 class="text-xl font-black uppercase mb-4">Purge Log?</h2>
+                    <button onclick="executeBurn('${id}')" class="w-full py-4 bg-red-600 rounded-xl text-[10px] font-black mb-3">Confirm Burn</button>
+                    <button onclick="closeModal()" class="w-full py-4 bg-white/5 rounded-xl text-[10px] font-black">Abort</button>
+                `;
+            }
+            modal.style.display = 'flex';
+        };
+
+        window.closeModal = () => document.getElementById('actionModal').style.display = 'none';
+
+        window.executeRestore = async (id, uid, amt, oldStatus) => {
+            try {
+                if (oldStatus === 'Approved' && uid) {
+                    await updateDoc(doc(db, "users", uid), { balance: increment(-amt) });
+                }
+                await updateDoc(doc(db, "trades", id), { status: 'Pending' });
+                closeModal();
+            } catch (err) { alert(err.message); }
+        };
+
+        window.executeBurn = async (id) => {
+            try { await deleteDoc(doc(db, "trades", id)); closeModal(); } catch (err) { alert(err.message); }
+        };
+    </script>
+</body>
+</html>

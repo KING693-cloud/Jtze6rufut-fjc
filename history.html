@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Global Financial Ledger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #020617; 
+            color: #f8fafc; 
+            overflow-x: hidden;
+            width: 100%;
+        }
+        .glass-card { 
+            background: rgba(15, 23, 42, 0.8); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+            border-radius: 1.5rem; 
+        }
+        .history-row { border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .live-tag { 
+            animation: pulse 2s infinite; 
+            background: rgba(16, 185, 129, 0.1); 
+            color: #10b981; 
+            border: 1px solid rgba(16, 185, 129, 0.2); 
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        /* Dynamic Amount Shrinking */
+        .shrink-amount {
+            font-size: clamp(1.25rem, 6vw, 2.25rem);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+        
+        .header-amount {
+            font-size: clamp(1.75rem, 8vw, 3.5rem);
+        }
+
+        .graph-bar { height: 6px; border-radius: 10px; transition: width 1.5s ease; }
+    </style>
+</head>
+<body class="pb-20">
+
+    <nav class="p-4 border-b border-white/5 bg-slate-950/90 backdrop-blur-xl sticky top-0 z-50 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <button onclick="window.location.href='payouts.html'" class="w-10 h-10 flex items-center justify-center bg-white/5 rounded-xl border border-white/10 active:scale-95 transition">
+                <i class="fas fa-chevron-left text-blue-500 text-xs"></i>
+            </button>
+            <div>
+                <h1 class="text-[10px] font-black uppercase tracking-widest text-white">System Ledger</h1>
+                <p class="text-[7px] font-bold text-emerald-500 uppercase flex items-center gap-1">
+                    <span class="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Nigeria Time Sync
+                </p>
+            </div>
+        </div>
+        <div class="text-right">
+            <p id="serverClock" class="text-[10px] font-black text-blue-500">00:00:00</p>
+        </div>
+    </nav>
+
+    <section class="p-3 max-w-4xl mx-auto space-y-3">
+        <div class="glass-card p-6 border-blue-500/10 relative overflow-hidden">
+            <p class="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-1">Total Lifetime Volume</p>
+            <h2 id="lifetimeTotal" class="font-black italic tracking-tighter text-white header-amount">₦0.00</h2>
+            <div class="mt-2 flex items-center gap-2">
+                <span id="txCount" class="text-[9px] font-black bg-blue-500/10 text-blue-400 px-2 py-1 rounded-md">0</span>
+                <span class="text-[8px] font-bold text-gray-600 uppercase">Successful Settlements</span>
+            </div>
+        </div>
+    </section>
+
+    <main class="p-3 max-w-4xl mx-auto">
+        <div class="glass-card overflow-hidden border-white/5">
+            <div id="dailyList" class="divide-y divide-white/5">
+                <div class="py-20 text-center">
+                    <div class="w-6 h-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
+                    <p class="text-[8px] font-black text-gray-700 uppercase tracking-widest">Syncing Records...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3vDwtittQkvW6Bxseutk-ThHFkrF_K0c",
+            authDomain: "boltrade-40812.firebaseapp.com",
+            projectId: "boltrade-40812",
+            storageBucket: "boltrade-40812.firebasestorage.app",
+            messagingSenderId: "682083427899",
+            appId: "1:682083427899:web:07a8f74c04908dc8f8de1e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const getNGDate = (date) => {
+            return new Intl.DateTimeFormat('en-GB', {
+                timeZone: 'Africa/Lagos',
+                year: 'numeric', month: 'short', day: 'numeric'
+            }).format(date);
+        };
+
+        const updateClock = () => {
+            const ngTime = new Date().toLocaleTimeString('en-GB', { timeZone: 'Africa/Lagos', hour12: false });
+            document.getElementById('serverClock').innerText = ngTime + " WAT";
+        };
+        setInterval(updateClock, 1000);
+
+        onSnapshot(query(collection(db, "withdrawals"), where("status", "==", "Approved")), (snap) => {
+            let lifetime = 0;
+            let dailyData = {};
+            let totalCount = 0;
+            
+            const ngToday = getNGDate(new Date());
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const ngYesterday = getNGDate(yesterday);
+
+            snap.forEach(d => {
+                const data = d.data();
+                const amt = parseFloat(data.amount || 0);
+                lifetime += amt;
+                totalCount++;
+
+                const rawDate = data.finalizedAt || data.timestamp;
+                if(rawDate) {
+                    const dateKey = getNGDate(rawDate.toDate());
+                    if(!dailyData[dateKey]) dailyData[dateKey] = { total: 0, count: 0 };
+                    dailyData[dateKey].total += amt;
+                    dailyData[dateKey].count += 1;
+                }
+            });
+
+            document.getElementById('lifetimeTotal').innerText = "₦" + lifetime.toLocaleString(undefined, {minimumFractionDigits: 0});
+            document.getElementById('txCount').innerText = totalCount;
+            
+            const list = document.getElementById('dailyList');
+            list.innerHTML = "";
+
+            const sortedDates = Object.keys(dailyData).sort((a,b) => new Date(b) - new Date(a));
+            const maxVal = Math.max(...Object.values(dailyData).map(v => v.total), 1); 
+
+            sortedDates.forEach(dateStr => {
+                const isToday = (dateStr === ngToday);
+                const isYesterday = (dateStr === ngYesterday);
+                let label = isToday ? "TODAY" : isYesterday ? "YESTERDAY" : dateStr;
+                let tag = isToday ? "LIVE" : "CLOSED";
+                let tagClass = isToday ? "live-tag" : "bg-white/5 text-gray-600";
+                const percentage = (dailyData[dateStr].total / maxVal) * 100;
+
+                list.innerHTML += `
+                    <div class="p-5 history-row">
+                        <div class="flex justify-between items-start gap-4">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs font-black text-white uppercase">${label}</span>
+                                    <span class="text-[6px] font-black px-1.5 py-0.5 rounded ${tagClass} uppercase">${tag}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[8px] font-black text-blue-500 bg-blue-500/5 px-1.5 py-0.5 rounded border border-blue-500/10">
+                                        ${dailyData[dateStr].count} TX
+                                    </span>
+                                    <span class="text-[8px] font-bold text-gray-600">${dateStr}</span>
+                                </div>
+                            </div>
+                            <div class="text-right flex-shrink-0 max-w-[50%]">
+                                <h4 class="shrink-amount font-black italic tracking-tighter ${isToday ? 'text-emerald-500' : 'text-gray-300'}">
+                                    ₦${dailyData[dateStr].total.toLocaleString(undefined, {minimumFractionDigits: 0})}
+                                </h4>
+                            </div>
+                        </div>
+                        <div class="w-full bg-white/5 h-[4px] rounded-full mt-4 overflow-hidden">
+                            <div class="graph-bar ${isToday ? 'bg-emerald-500' : 'bg-blue-600'}" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        });
+    </script>
+</body>
+</html>
